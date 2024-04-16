@@ -2,7 +2,7 @@ body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
-    height: 100%;
+
     background: linear-gradient(to bottom, #8dc8e4 0%, #eeeeee 100%);
     background-repeat: no-repeat;
     background-attachment: fixed;
@@ -10,10 +10,9 @@ body {
     background-size: cover;
     background-position: top left;  
     margin: 0;  
-    height: 100vh; 
 }
 
-.container {
+.message-container {
     max-width: 70%;
     margin: 15px auto;
     background-color: #fff;

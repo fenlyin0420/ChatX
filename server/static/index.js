@@ -1,3 +1,12 @@
+var chatInput = document.getElementById("chatInput");
+var send_button = document.getElementById("send-button");
+
+chatInput.addEventListener('keydown', Event => {
+	if (Event.key == 'Enter'){
+		send_button.click();
+	}	
+})
+
 function addEle(content, cls) {  
     var ele = document.createElement('div');  
     ele.classList.add(cls);  
@@ -8,7 +17,7 @@ function addEle(content, cls) {
 }  
   
 function startSSE() {  
-    var eventSource = new EventSource('/api/chat/stream');  
+    var eventSource = new EventSource('/api/conversation');  
     eventSource.onmessage = function(event) {  
         var data = JSON.parse(event.data);  
         if ('output' in data && 'text' in data['output']) {  
@@ -23,26 +32,20 @@ function startSSE() {
             // 连接被关闭，可以重新连接或显示错误信息  
             console.error('Connection closed unexpectedly');  
         }  
+        console.error('Connection closed unexpectedly');  
+        eventSource.close();
     };  
-}  
-
-var chatInput = document.getElementById("chatInput");
-var send_button = document.getElementById("send-button");
-chatInput.addEventListener('keydown', Event => {
-	if (Event.key == 'Enter'){
-		send_button.click();
-	}	
-})
-  
+}
   
 function sendQuestion() {  
     var chatEle = document.getElementById('chatInput');  
-	var sendBut = document.getElementById('send-button');
-    var question = chatEle.value;  
-	sendBut.disabled = true;
+    var question = chatEle.value;
+    startSSE();
+    
+	send_button.disabled = true;
 	if (question == ''){
 		window.alert("Please input your question");
-		sendBut.disabled = false;
+		send_button.disabled = false;
 		return;
 	}
     chatEle.value = '';  
@@ -53,10 +56,5 @@ function sendQuestion() {
         type: 'POST',  
         contentType: 'application/json',  
         data: JSON.stringify({ question }), 
-		success:function(response){
-			let content = response["output"]["text"];
-			// console.log(content)
-			addEle(content, "bot-message" );
-			sendBut.disabled = false;
-    }}) 
+		}) 
 }  
