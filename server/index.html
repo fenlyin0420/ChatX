@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatX</title>
+    <script src="node_modules/jquery/dist/jquery.js"></script>
+    <link rel="stylesheet" href="./index.css">
+</head>
+
+<body>
+    
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>ChatX</h1>
+        </div>
+        <div class="sidebar-content">
+            <!-- 可以在这里添加侧边栏内容 -->
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="main">
+
+            <div class="messages" id="messages">
+                <!-- 聊天消息将在这里动态显示 -->
+                <div class="bot-message">你好，我是聊天机器人！</div>
+                <div class="user-message">现在你是一名私人助手，请你帮我解决一些问题！</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-container">
+        <!--用户输入框-->
+        <textarea id="chatInput" placeholder="Type your message..."></textarea>
+        <button id="send-button" onclick="sendQuestion()">Send</button>
+    </div>
+    
+    <script src="index.js"></script>
+</body>
+
+</html>
