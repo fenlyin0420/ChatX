@@ -1,55 +1,72 @@
 from fastapi import FastAPI, Request
 from starlette.responses import StreamingResponse
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-import httpx
-from config import headers, body, API_ENDPOINT
 from datetime import datetime
-import time
+import os
+from openai import OpenAI
+import json
 
 app = FastAPI()
-app.mount('/static', StaticFiles(directory="static"), name="static")
 
-@app.get("/")
-async def index():
-    return FileResponse("index.html")
+client = OpenAI(
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+)
 
+# Default system message
+SYSTEM_MESSAGE = "You are a helpful assistant."
 
-async def stream_sse(response: httpx.Response):
-    async for line in response.aiter_lines():
-        if line:
-            time.sleep(0.1)
-            print(line)
-            yield f"data: {line}\n\n"
+async def generate_stream_response(message):
+    """Generate streaming response from Qwen model and format as JSON chunks"""
+    try:
+        completion = client.chat.completions.create(
+            model="qwen-turbo-1101",
+            messages=[
+                {"role": "system", "content": SYSTEM_MESSAGE},
+                {"role": "user", "content": message},
+            ],
+            stream=True,
+        )
+        
+        for chunk in completion:
+            if hasattr(chunk.choices[0].delta, 'content') and chunk.choices[0].delta.content:
+                json_chunk = {
+                    "choices": [{"delta": {"content": chunk.choices[0].delta.content}}]
+                }
+                yield f"data: {json.dumps(json_chunk)}\n\n"
+        
+        yield "data: {\"choices\":[{\"delta\":{\"content\":\"\"}, \"finish_reason\":\"stop\"}]}\n\n"
+        yield "data: [DONE]\n\n"
+        
+    except Exception as e:
+        print(f"Error in stream: {str(e)}")
+        error_chunk = {
+            "error": str(e)
+        }
+        yield f"data: {json.dumps(error_chunk)}\n\n"
+        yield "data: [DONE]\n\n"
+
+def log_message(message):
+    """Log user messages with timestamp"""
+    with open('access.log', 'a', encoding='utf-8') as f:
+        timestamp = datetime.now().strftime("[%Y/%m/%d-%H:%M:%S]")
+        f.write(f"{timestamp}: {message}\n")
 
 @app.post("/api/chat")
-async def proxy_sse(request: Request):
-    data = await request.json()
-    body['input']['messages'][1]['content'] = data['message']
-    with open('access.log', 'a', encoding='utf-8') as f:
-        content = datetime.now().strftime(f"[%Y/%m/%d-%H:%M:%S]:{data['message']}")
-        print(content, file=f)
-    
-    
-@app.get('/api/chat')
-async def rsp():
-    async with httpx.AsyncClient() as client:
-        response = await client.post(API_ENDPOINT, headers=headers, json=body, timeout=None)
-        print(response.text)
-        return StreamingResponse(stream_sse(response), media_type="text/event-stream")
+async def chat_endpoint(request: Request):
+    """Combined endpoint that accepts the message and returns streaming response"""
+    try:
+        data = await request.json()
+        user_message = data.get('message', '')
+        log_message(user_message)
+        
+        return StreamingResponse(
+            generate_stream_response(user_message),
+            media_type="text/event-stream"
+        )
+    except Exception as e:
+        return {"error": str(e)}
 
-@app.get('test')
-def test():
-    return "Hello World"
-
-#########################################测试用#########################################
-async def iter_file(chunk_size=1024):
-    """异步迭代文件内容"""
-    for i in range(100):
-        time.sleep(1)
-        yield f"data: {i}\n\n"
-
-@app.get('/sse')
-async def homepage():
-    # 假设有一个大文件需要发送给客户端
-    return StreamingResponse(iter_file(), media_type='text/event-stream')
+@app.get('/health')
+def health_check():
+    """Simple health check endpoint"""
+    return {"status": "ok"}
